@@ -1,0 +1,50 @@
+--- a/third_party/openthread/repo/src/posix/platform/multicast_routing.cpp
++++ b/third_party/openthread/repo/src/posix/platform/multicast_routing.cpp
+@@ -42,7 +42,23 @@
+ #ifdef __linux__
+ #include <linux/mroute6.h>
+ #else
+-#error "Multicast Routing feature is not ported to non-Linux platforms yet."
++// macOS stub - multicast routing will be non-functional but allows compilation
++#warning "Multicast Routing is stubbed on non-Linux platforms - functionality disabled"
++
++// Define stubs for Linux-specific types
++struct mf6cctl {};
++struct mrt6msg { 
++    uint8_t im6_mbz;
++    uint8_t im6_msgtype;
++    uint16_t im6_mif;
++    struct in6_addr im6_src;
++    struct in6_addr im6_dst;
++};
++struct mif6ctl {};
++struct sioc_sg_req6 { struct sockaddr_in6 src, grp; unsigned long bytecnt, pktcnt, wrong_if; };
++#define MRT6_INIT 200
++#define MRT6_ADD_MIF 202
++#define MRT6_ADD_MFC 204
++#define MRT6_DEL_MFC 205
++#define MRT6MSG_NOCACHE 1
++#define SIOCGETSGCNT_IN6 0
++#define IF_SET(idx, set) do {} while(0)
+ #endif
+ 
+ #include <openthread/backbone_router_ftd.h>
+@@ -216,6 +232,11 @@ void MulticastRoutingManager::Process(const Mainloop::Context &aContext)
+ void MulticastRoutingManager::InitMulticastRouterSock(void)
+ {
++#ifndef __linux__
++    LogWarn("Multicast routing not supported on this platform");
++    mMulticastRouterSock = -1;
++    return;
++#else
+     int                 one = 1;
+     struct icmp6_filter filter;
+     struct mif6ctl      mif6ctl;
+@@ -250,6 +271,7 @@ void MulticastRoutingManager::InitMulticastRouterSock(void)
+     VerifyOrDie(mif6ctl.mif6c_pifi > 0, OT_EXIT_ERROR_ERRNO);
+     VerifyOrDie(0 == setsockopt(mMulticastRouterSock, IPPROTO_IPV6, MRT6_ADD_MIF, &mif6ctl, sizeof(mif6ctl)),
+                 OT_EXIT_ERROR_ERRNO);
++#endif
+ }
+ 
+ void MulticastRoutingManager::FinalizeMulticastRouterSock(void)
